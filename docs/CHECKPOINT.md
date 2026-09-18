@@ -1,0 +1,72 @@
+# CHECKPOINT — OCR A-Level assembly (LMC) project
+
+*Written 2026-09-18 at the end of a Claude desktop session. Resume from here in Claude Code.*
+
+## Who / what
+
+- The user is a **trainee computer science teacher (OCR A-Level H446)**, at Tiffin School (house style: navy `#002269` / crimson `#A50034`, if a printable is needed).
+- They want: (1) a **cheat sheet of all the commands**, (2) **reference material**, (3) they want a **web-based simulator** in this project (`ocrasm`, TypeScript), published via **GitHub Pages**, used as a **classroom learning guide**: assemble LMC source, then run / debug / single-step showing the effect of each step, with **reference material in pop-ups or side panels**. (Originally a blank stub; see the `src/` row below for what exists now.)
+- **"OCR assembly" = the Little Man Computer (LMC)** — 11 mnemonics (`ADD SUB STA LDA BRA BRZ BRP INP OUT HLT DAT`). It is *not* ARM-style; AQA is the one that uses `LDR/STR/MOV/CMP…`. Confirmed against OCR's own specification, Clarification Guide, 1.1.1 Delivery Guide, sample paper and mark schemes (Claude Code session; see the session log below).
+
+## Status
+
+| Item | State |
+|---|---|
+| `docs/OCR_LMC_Reference.md` | **Done.** Instruction set, syntax, two-pass assembly, FDE in register-transfer notation, worked traces, addressing modes, misconceptions, exam questions + answers, simulator behaviour spec. |
+| `programs/*.lmc` (10 programs) + `programs/tests.json` (32 cases) | **Done, all 32 pass** on the reference oracle. Added later: `max10.lmc` / `min10.lmc` (largest / smallest of ten inputs, 8 input sets each) and `sieve.lmc` (Sieve of Eratosthenes up to 50 by self-modifying code; plus `programs/x/sieve-x.lmc`, up to 45 with an index register). Both sieves are limited by the 100 mailboxes. `programs/x/` now has 12 programs / 35 cases (fibonacci, reverse, max10, linear search, bubble sort, linked list, sieve, and the original five), each verified on `lmcx-oracle.js` against answers computed separately in JavaScript. |
+| `docs/reference-oracle/lmc-oracle.js` | **Done.** Throwaway assembler + interpreter used only to check the examples. Run: `node docs/reference-oracle/lmc-oracle.js programs`. It is an *oracle for cross-checking your build*, not the simulator (no I/O UI, no stepping detail, no errors). |
+| **Cheat sheet** | **Done.** `docs/OCR_LMC_CheatSheet.pdf` (2 pages, A4, what the user asked for) + editable `docs/OCR_LMC_CheatSheet.docx`. Visually checked page by page. Rebuild: `npm install docx` in a scratch dir, `node docs/cheatsheet-build/build-cheatsheet.js <out.docx>`, then export with `docs/cheatsheet-build/topdf.ps1` (Word COM; edit the paths inside). Page 1: machine model, syntax, the 11 instructions, "Remember" box. Page 2: FDE in RTN, program patterns (sequence / selection / iteration), top mistakes, addressing modes. |
+| `docs/lmc-instruction-set.json` | **NOT BUILT.** Optional data file for the sim (mnemonic, opcode, operand kind, RTN steps). The table in Reference §3 and §5 has everything needed. |
+| **LMC-X** (Reference §7.1, `programs/x/`, `docs/reference-oracle/lmcx-oracle.js`) | **Done, optional, explicitly NOT OCR.** Variable-length instructions: 3-digit opcode word `O M S` (mode digit `M`) + operand word following, like a 6502/6809. Adds `LDX`/`INX`/`TXA` and an index register. 6/6 LMC-X tests pass; plain-LMC programs run unchanged at source level (14 of 15 — `array-sum-indexed.lmc` fails with `illegal instruction 501`, a quirk of my invented design and not an OCR point). First draft packed the operand into the word; the user pointed out that is unrealistic, so it was redone as operand-follows. Run: `node docs/reference-oracle/lmcx-oracle.js programs/x tests-x.json`. Default the simulator to plain OCR LMC; LMC-X behind a setting. |
+| `src/` | **Built (first cut), Claude Code session 2026-09-18.** Vite + vanilla TypeScript, deployable to GitHub Pages. `src/engine/` = assembler + micro-step machine (vitest: every `tests.json` case, a step-by-step cross-check against `lmc-oracle.js`, register-behaviour, alias, error and edge cases). `src/main.ts` + `index.html` + `src/style.css` = UI (editor with machine-code gutter and breakpoints, registers, fetch-decode-execute panel, memory grid, inbox/outbox, trace table, step back, run speeds). `src/reference.ts` = tabbed reference drawer (dockable). Commands: `npm run dev`, `npm test`, `npm run build`. GitHub Pages workflow: `.github/workflows/pages.yml` (deploys on push to `main`; repo Settings > Pages > Source must be "GitHub Actions"). **Extended LMC** (LMC-X) is built behind `?lmc=extended` (see the session log). **Not built yet:** `OTC`, autograder panel, symbol-table view, trace export (see Reference §11.3). |
+
+Verified vs not:
+- **Machine-verified:** all 7 programs and their outputs; the assembled listings and both trace tables (§4, §6.1, §6.2); exam answers Q1, Q2, Q4.
+- **Hand-checked only:** Q3, Q5–Q7 model answers (conceptual).
+- A first draft of Q4 was **wrong** (`STA n` overwrote the mailbox it claimed was `HLT`). Caught by running it and replaced. Keep running examples through the oracle before trusting them.
+
+## Next steps
+
+1. ~~Cheat sheet~~ — done (see Status).
+2. Optionally build `docs/lmc-instruction-set.json`.
+3. Help build `src/` if asked — see Reference §11 (behaviour decisions, types, feature tiers).
+4. The cheat sheet's wording of each instruction is *my* plain-English version, not OCR's. If it will be handed to students as "OCR's table", compare it with the LMC table in a recent past paper first.
+
+## Open items to check with the user / against sources
+
+- **Exact OCR wording of the instruction table — RESOLVED (2026-09-18, Claude Code).** The full spec PDF downloads fine with `curl -L -A "Mozilla/5.0"` (the earlier fetch tool could not open it). Appendix 5d's "Little Man Computer Instruction Set" (spec v3.0 p.40) gives only: ADD Add; SUB Subtract; STA Store (alt STO); LDA Load (alt LOAD); BRA Branch always (BR); BRZ Branch if zero (BZ); BRP Branch if positive (BP); INP Input (IN, INPUT); OUT Output; HLT End program (COB, END); DAT Data location. **No opcodes, no RTN.** The Reference now reproduces it (§3). The instruction wording in the cheat sheet and the app is still our paraphrase. Whether papers reprint the table is still unverified.
+- **Spec numbering, now confirmed from OCR's own Clarification Guide:** 1.2.4(c) assembly/LMC (Appendix 5d), 1.2.4(d) addressing modes. The earlier "1.2.3b / 1.2.4c" from Craig 'n' Dave was slightly off and has been corrected in the Reference.
+- **OCR Delivery Guide for 1.2.4** — only seen as a search snippet (page 404s in my fetch tool). It says immediate-mode values follow the opcode in memory and shows `MOV A,#30h`. Check it yourself; it is the only OCR source for "operand follows" and for `#`.
+- **Not from OCR (my own additions):** `programs/array-sum-indexed.lmc` (self-modifying illustration of indexed addressing), LMC-X and all its notation/opcodes, the `.lmc` example programs generally (OCR's own exam LMC listings look like the sample-paper Q5 style), and the cheat sheet's plain-English instruction wording. None of the self-modifying-code material is backed by anything I read from OCR.
+- **Syllabus point that matters for the simulator:** OCR says addressing modes should be *integrated with assembly language* and candidates should have used all four when writing, reading and tracing programs. OCR defines the modes only in terms of "the operand" and "the Index Register" (Autumn 2021 mark scheme Q6d) and gives **no encoding or notation** for indirect/indexed.
+- **Simulator divergences** — Reference §11.1 lists decisions (ACC overflow, `BRZ/BRP` value-vs-flag, input range, illegal opcodes). The Higginson LMC simulator is what most schools use; its exact edge-case behaviour was **not** checked. Test it before telling students a behaviour is standard.
+- `OTC` = `922` (output as char) is a non-OCR extension in some sims; the doc treats it as an optional setting.
+
+## Environment gotchas (Windows 11, this machine)
+
+- Node v24. In Git Bash, `node -e` needs **`C:/…` paths, not `/c/…`** (`/c/...` resolved to `C:\c\...`).
+- Word/PDF building here: `npm install docx` in a scratch dir; QA via Word COM (`Documents.Open` → `SaveAs([ref]pdf,[ref]17)`) then PyMuPDF to rasterise. `soffice` / `pdftoppm` are **not** installed, so the docx skill's own verify commands won't work.
+- The repo in `ocrasm` has **no commits yet** and has files staged (`.gitignore`, `package.json`, `src/index.ts`, `tsconfig.json`, `.DS_Store`). Nothing was committed or changed in git this session. `.DS_Store` is staged — probably unwanted.
+- Bash `powershell -File x.ps1` is blocked by the execution policy here; run `.ps1` files via the PowerShell tool with `& 'path'` (that works), and don't bypass the policy.
+- Files this session added: `docs/OCR_LMC_Reference.md`, `docs/OCR_LMC_CheatSheet.{docx,pdf}`, `docs/CHECKPOINT.md`, `docs/reference-oracle/{lmc-oracle,lmcx-oracle}.js`, `docs/cheatsheet-build/*`, `programs/*` incl. `programs/x/*` (all untracked).
+- OCR PDFs can't be read through WebFetch's text summary, but the tool saves the binary; extract the text yourself with PyMuPDF (`pymupdf.open(path)` then `page.get_text()`), and print with `PYTHONIOENCODING=utf-8` (cp1252 chokes on the bullet glyphs).
+- The cheat sheet (PDF/docx) predates §7.1 and is **unchanged**: its addressing-mode box uses OCR-style "operand" wording and says the LMC only has direct addressing, so it is still consistent with the evidence.
+
+## Session log: Claude Code, 2026-09-18 (web app)
+
+**Rule for anything extended-only:** its user-visible text (samples, reference pages, badge, register names, the peripherals panel) lives in `src/extended-pack.ts` (and the files it imports: `reference-extended.ts`, `peripherals.ts`), which is loaded with a dynamic `import()` **only** in extended mode, so the standard page never downloads it. Do not import those files statically from anywhere else. (The engine, assembler and hover-explanation code for the extended dialect are shared code and are in the main bundle; they show nothing by themselves.)
+
+**Peripherals (extended LMC only).** A checkbox in a "Peripherals" panel (off by default) turns on 3 switches (mailboxes 94-96) and 3 lamps (97-99), memory-mapped. The user's decisions, in order: they should be ordinary writable memory (no read-only switches, no special engine code: a switch click just pokes 1/0 into its mailbox); they should be behind a checkbox; when on, the mailboxes are **reserved** by the assembler (program image limited to 00-93) and drawn differently in the grid. The sieve was **not** shrunk (its runtime writes to 94-99 only light lamps). See Reference §7.1 "Peripherals". Samples: `lamps-x`, `switch-value-x`, `binary-counter-x`, `traffic-lights-x` (`programs/x/`, tested in `src/engine/peripheral-samples.test.ts`, not in `tests-x.json`).
+
+Built beyond the first cut: **HCF easter egg**, **hover bubble** for machine code, **double-click to edit a mailbox**, **OCR alternative mnemonics**, and a review of register behaviour against OCR's materials.
+
+- **HCF (undocumented on purpose).** Opcode `999`, mnemonic `HCF`, "halt and catch fire". Halts the machine and plays a fire animation (`src/fire.ts`, `src/fire.css`). Deliberately absent from the reference drawer, the hover bubble ("not in the instruction set"), the examples and the cheat sheet. `DAT 999` executed as an instruction does the same. Back or Reset puts it out. Respects `prefers-reduced-motion`.
+- **Hover bubble** on the margin machine code and on memory cells: opcode, operand, addressing mode (always "direct"; the LMC has no other), effect (`src/explain.ts`).
+- **Double-click a mailbox** to change its value (-999..999). Back undoes just the edit; Reset restores the assembled program.
+- **Addressing modes (decision: 2026-09-18).** The LMC itself has only direct addressing, so the default app **never mentions addressing modes** (no drawer tab, no mode row in the hover bubble, plain error wording for `#5` / `(5)` / `5,X`, and the comments in `programs/array-sum-indexed.lmc` were reworded). The user then asked for the modes to live behind a URL option, named **`?lmc=extended`** (the user rejected "pimped" as unsuitable for teaching). That option is LMC-X from Reference §7.1: an "Extended LMC · not OCR" badge, immediate `#5`, indirect `(5)`, indexed `5,X`, `LDX` / `INX` / `TXA`, an index register X and operand register OPR, one- and two-word instructions, an "Addressing modes" drawer tab, and the `programs/x/` examples. It combines with `?pc=after`. Saved programs are kept separately per dialect. Note: OCR's spec (1.2.4(d)) still expects students to know the four modes as concepts; with the default view they are not shown.
+- **The cheat sheet** (`docs/OCR_LMC_CheatSheet.pdf` / `.docx`) still has an addressing-modes box on page 2. It has **not** been changed to match the "don't mention modes" decision.
+- **OCR review of MAR / MDR / CIR** (details in Reference §5): the simulator's steps match OCR's descriptions, except that OCR's delivery guide puts `PC ← PC + 1` **last** in the fetch while the simulator does it second. The user chose **a switch, default unchanged**, then asked for it to be **off the screen**: it is the URL parameter `?pc=before` (default) / `?pc=after` (`early`/`late` also accepted), parsed in `src/config.ts` (engine option `pcIncrement: 'early' | 'late'`, tested for identical program results). OCR calls the MDR "MBR" in the delivery guide, and the mark scheme accepts either (noted in the drawer). The user also asked for the **buses** (spec 1.1.1(a); Clarification Guide) to be shown: memory-access steps now carry `bus` (address / data / control) and the cycle panel prints it.
+- **Negative numbers.** Nothing in the OCR documents read defines LMC number representation, overflow, or what happens when `SUB` goes below zero (two's complement and sign-and-magnitude appear in OCR's spec only for binary integers, 1.4.1). The simulator keeps ACC and mailboxes as signed decimal integers, warns outside -999..999, and `BRP` tests ACC >= 0 (Reference §11.1).
+- `programs/` and the reference oracle were not changed. Engine tests: `npm test` (68 at the time of writing).
+
+- **JavaScript gotcha when patching files with `String.replace`:** a replacement string containing `$'`, `$&` or `$`` is interpreted specially and can splice in half the file. Use a function replacer (`s.replace(a, () => b)`).
