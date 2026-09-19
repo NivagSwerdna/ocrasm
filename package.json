@@ -1,7 +1,13 @@
 {
   "name": "ocrasm",
   "version": "1.0.0",
-  "description": "",
+  "description": "Little Man Computer (LMC) simulator for teaching OCR A Level Computer Science assembly language",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NivagSwerdna/ocrasm.git"
+  },
+  "homepage": "https://nivagswerdna.github.io/ocrasm/",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
