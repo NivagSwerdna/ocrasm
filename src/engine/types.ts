@@ -13,7 +13,7 @@ export type Dialect = 'standard' | 'extended';
 /** `COB` is accepted as an alias of `HLT` and normalised to it. */
 export type Mnemonic = 'ADD' | 'SUB' | 'STA' | 'LDA' | 'BRA' | 'BRZ' | 'BRP' | 'INP' | 'OUT' | 'HLT' | 'HCF' | 'DAT'
   // extended dialect only
-  | 'LDX' | 'INX' | 'TXA';
+  | 'LDX' | 'INX' | 'TXA' | 'SLEEP';
 
 export interface AsmError {
   /** 1-based source line. */

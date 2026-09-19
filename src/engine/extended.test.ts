@@ -97,7 +97,7 @@ describe('extended dialect: assembler', () => {
     expect(decodeExtended(530)).toEqual({ mnemonic: 'LDA', mode: 'indexed', length: 2 });
     expect(decodeExtended(410)).toEqual({ mnemonic: 'LDX', mode: 'immediate', length: 2 });
     expect(decodeExtended(903)).toEqual({ mnemonic: 'INX', length: 1 });
-    for (const bad of [310, 420, 640, 505, 840, 905, 998, -1, 1000]) expect(decodeExtended(bad), String(bad)).toBeUndefined();
+    for (const bad of [310, 420, 640, 505, 840, 906, 998, -1, 1000]) expect(decodeExtended(bad), String(bad)).toBeUndefined();
     expect(disassembleExtended(530, 21, (a) => (a === 21 ? 'data' : undefined))).toBe('LDA data,X');
     expect(disassembleExtended(510, 5)).toBe('LDA #5');
     expect(disassembleExtended(520, 12)).toBe('LDA (12)');

@@ -39,6 +39,7 @@ const LIBRARY: { file: string; name: string; concept: string }[] = [
 /** Samples for the switches and lamps. Choosing one turns the peripherals on. */
 const PERIPHERAL_LIBRARY: { file: string; name: string; concept: string }[] = [
   { file: 'lamps-x.lmc', name: 'Switches to lamps', concept: 'Peripherals: read a switch, write a lamp' },
+  { file: 'blink-x.lmc', name: 'Blink a lamp', concept: 'Peripherals and SLEEP: on, wait, off, wait' },
   { file: 'switch-value-x.lmc', name: 'Binary switches to a number', concept: 'Peripherals: 3 switches as a binary number' },
   { file: 'binary-counter-x.lmc', name: 'Binary counter on the lamps', concept: 'Peripherals: counting 0 to 7 in binary' },
   { file: 'traffic-lights-x.lmc', name: 'Traffic lights', concept: 'Peripherals: a table of stages and timings' },
@@ -70,10 +71,13 @@ export const EXTENDED_REGISTERS: { reg: Register; full: string }[] = [
   { reg: 'X', full: 'Index' },
 ];
 
+/** An extra run speed: almost no delay between instructions, so a SLEEP takes very nearly exactly as long as it says. */
+export const REALTIME_SPEED = { value: 'realtime', label: 'Real time' };
+
 export const BADGE = {
   text: 'Extended LMC · not OCR',
   title: 'An invented variant with addressing modes. It is not part of the OCR specification.',
 };
 
-export const EXTENDED_TITLE = 'LMC Simulator (extended LMC)';
+export const EXTENDED_TITLE = 'Little Man Computer (LMC) Simulator (extended LMC)';
 export const EXTENDED_REFERENCE_TITLE = ' (extended LMC)';

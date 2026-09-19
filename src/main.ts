@@ -29,7 +29,8 @@ import { initReference, openReference, toggleReference } from './reference';
 const MAX_INSTRUCTIONS = 10_000;
 const MAX_FRAMES = 2_000;
 const TRACE_ROWS_SHOWN = 200;
-const DELAYS = { slow: 700, medium: 350, fast: 40 } as const;
+/** Milliseconds between steps. `realtime` (extended mode only) is as fast as the browser's timers allow. */
+const DELAYS = { slow: 700, medium: 350, fast: 40, realtime: 1 } as const;
 /**
  * Set with ?lmc=extended. The standard LMC (direct addressing only) is what OCR specifies and is the default;
  * the extended one adds addressing modes, an index register X and an operand register OPR. See config.ts.
@@ -137,6 +138,8 @@ let resumeOnInput = false;
 let skipBreakpoint = false;
 let statusNote = '';
 let prevStatus = '';
+/** While a SLEEP instruction is being waited out, how long it asked for. */
+let sleepingMs = 0;
 
 // ---------- storage ----------
 
@@ -367,6 +370,7 @@ function stepBack() {
 
 function stopRun(note = '') {
   window.clearTimeout(runTimer);
+  sleepingMs = 0;
   if (running) statusNote = note;
   running = false;
 }
@@ -389,6 +393,7 @@ function startRun() {
   let executed = 0;
   const tick = () => {
     if (!running) return;
+    sleepingMs = 0;
     if (!skipBreakpoint && m.atInstructionBoundary && bpAddrs().has(m.pc)) {
       stopRun('Paused at a breakpoint.');
       render();
@@ -408,8 +413,11 @@ function startRun() {
       render();
       return;
     }
+    // A SLEEP instruction asks the page to wait. The machine does not: it only reports how long. Instant runs skip it.
+    const nap = recent.reduce((total, s) => total + (s.sleep ?? 0), 0);
+    sleepingMs = nap;
     render();
-    runTimer = window.setTimeout(tick, DELAYS[speed]);
+    runTimer = window.setTimeout(tick, DELAYS[speed] + nap);
   };
   render();
   tick();
@@ -434,6 +442,7 @@ function runInstant() {
     }
   }
   if (m.status === 'waiting-input') resumeOnInput = true;
+  if (m.sleptMs > 0) note = `${note ? `${note} ` : ''}Instant runs skip every SLEEP: choose Real time to wait for them.`;
   stopRun(note);
   render();
 }
@@ -746,6 +755,13 @@ function renderControls() {
   dirtyNote.textContent = machine && dirty ? 'Edited: it will be re-assembled when you Step or Run.' : '';
 }
 
+/** " Slept 1.5 s in total." once a SLEEP has run. Shown because Instant runs skip the waiting but still count it. */
+function sleptNote(): string {
+  const ms = machine?.sleptMs ?? 0;
+  if (ms <= 0) return '';
+  return ` Slept ${ms >= 1000 ? `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)} s` : `${ms} ms`} in total.`;
+}
+
 function renderStatus() {
   let text: string;
   let kind = '';
@@ -761,18 +777,18 @@ function renderStatus() {
     text = `The CPU caught fire after ${machine.instructionCount} instruction${machine.instructionCount === 1 ? '' : 's'}. Press Back or Reset to put it out.`;
     kind = 'err';
   } else if (machine.status === 'halted') {
-    text = `Halted after ${machine.instructionCount} instruction${machine.instructionCount === 1 ? '' : 's'}.`;
+    text = `Halted after ${machine.instructionCount} instruction${machine.instructionCount === 1 ? '' : 's'}.${sleptNote()}`;
     kind = 'ok';
   } else if (machine.status === 'waiting-input') {
     text = 'Waiting for input.';
   } else if (running) {
-    text = 'Running…';
+    text = sleepingMs > 0 ? `Sleeping for ${sleepingMs} ms…` : 'Running…';
   } else if (statusNote) {
-    text = statusNote;
+    text = statusNote + sleptNote();
   } else if (machine.microCount === 0) {
     text = 'Ready. Press Step ▸ to begin.';
   } else {
-    text = `Paused. ${machine.instructionCount} instruction${machine.instructionCount === 1 ? '' : 's'} completed.`;
+    text = `Paused. ${machine.instructionCount} instruction${machine.instructionCount === 1 ? '' : 's'} completed.${sleptNote()}`;
   }
   statusEl.textContent = text;
   statusEl.className = `status ${kind}`;
@@ -1180,6 +1196,8 @@ async function start() {
     badge.title = pack.BADGE.title;
     document.querySelector('.toolbar h1')!.after(badge);
     peripheralInfoFor = pack.peripheralInfo;
+    const instant = [...speedSel.options].find((o) => o.value === 'instant') ?? null;
+    speedSel.insertBefore(new Option(pack.REALTIME_SPEED.label, pack.REALTIME_SPEED.value), instant);
     peripheralsPanel = pack.mountPeripherals({
       after: document.querySelector('.cycle-card')!,
       onEnable: setPeripherals,

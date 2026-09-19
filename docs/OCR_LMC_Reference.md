@@ -200,7 +200,7 @@ All in `programs/`, with expected results in `programs/tests.json` (32 cases, al
 | `divide.lmc` | repeated subtraction | quotient **and** remainder (`DIV`/`MOD`) |
 | `sieve.lmc` | self-modifying code (**my own illustration, not from OCR; optional**) | Sieve of Eratosthenes: primes up to 50, using a row of flags reached by rewriting its own `LDA`/`STA` instructions. Flags start at mailbox 42, so 57 is the largest limit that fits |
 | `array-sum-indexed.lmc` | self-modifying code (**my own illustration, not from OCR; optional**) | one way to imitate indexed addressing in plain LMC |
-| `x/*.lmc` (16 programs) | **LMC-X only — not OCR** | immediate / indirect / indexed modes, see §7.1 |
+| `x/*.lmc` (17 programs) | **LMC-X only — not OCR** | immediate / indirect / indexed modes, see §7.1 |
 
 ## 7. Addressing modes (spec concept — only *direct* exists in the LMC)
 
@@ -278,13 +278,14 @@ The assembler rejects the ✗ combinations (**verified**: `STA #5`, `BRA (5)`, `
 
 #### New register and instructions
 
-Indexed mode needs an index register (OCR's term is "the Index Register"; LMC-X calls it **X**), and something to set and read it. LMC-X adds three instructions (all invented):
+Indexed mode needs an index register (OCR's term is "the Index Register"; LMC-X calls it **X**), and something to set and read it. LMC-X adds four instructions (all invented):
 
 | Mnemonic | Words | Effect |
 |---|---|---|
 | `LDX` | `400` `005` / `410` `000` | `X ← [05]` (direct) / `X ← 0` (`LDX #0`). Uses opcode `4`, which plain LMC leaves unused. |
 | `INX` | `903` | `X ← X + 1` |
 | `TXA` | `904` | `ACC ← X` (needed to test the index against a limit) |
+| `SLEEP n` | `905` `nnn` | Wait `n` milliseconds, `n` a literal 0-999 (`SLEEP 500`; a leading `#` is accepted). Two words, like the instructions with operands; the operand word goes to the OPR and the step is `wait OPR ms`. **The machine has no clock**: the execute step only reports `sleep: n` (and adds it to a virtual `sleptMs` total), and the page's run loop does the waiting. Slow / Medium / Fast wait exactly `n` ms on top of their per-step delay; the extra **Real time** speed (1 ms per step, extended mode only) makes it almost exact; **Instant** and manual stepping never wait. The status line shows "Slept … in total". |
 
 #### Fetch–decode–execute with a following operand
 
@@ -397,7 +398,7 @@ Behind a checkbox in the "Peripherals" panel (below fetch-decode-execute), **off
 - **When the checkbox is on:** the assembler **reserves** mailboxes 94-99 (a program's own code and data may use 00-93; a longer program is an error), predefines the six names (they cannot be used as labels), and the memory grid draws those six mailboxes hatched, with a double border, their names and an "I/O" tag. A running program may still read and write them; the sieve, for example, writes flags there and just lights a few lamps, which is harmless. With it off the six mailboxes are plain memory and the names do not exist.
 - Choosing a peripheral sample turns the checkbox on. Programs that poll a switch (`wait LDA switch1`, `BRZ wait`) need Medium or Fast speed, not Instant, so you can click while they run.
 - **Torn reads:** a program that reads several switches one after another can see a mixture if two switches change while it is halfway through. A single click changes one switch, so it cannot; `switch-value-x.lmc` says so in a comment. Real hardware polling has the same problem.
-- Samples (`programs/x/`, no oracle: tested in `src/engine/peripheral-samples.test.ts`): `lamps-x.lmc` (lamps copy switches), `switch-value-x.lmc` (three switches as a binary number, output when it changes), `binary-counter-x.lmc` (lamps count 0-7 in binary), `traffic-lights-x.lmc` (a table of stages walked with `red,X` / `amber,X` / `green,X` / `time,X`).
+- Samples (`programs/x/`, no oracle: tested in `src/engine/peripheral-samples.test.ts`): `lamps-x.lmc` (lamps copy switches), `blink-x.lmc` (lamp1 on, `SLEEP 500`, off, `SLEEP 500`, forever; choose Real time), `switch-value-x.lmc` (three switches as a binary number, output when it changes), `binary-counter-x.lmc` (lamps count 0-7 in binary), `traffic-lights-x.lmc` (a table of stages walked with `red,X` / `amber,X` / `green,X` / `time,X`).
 
 #### Simulator notes
 

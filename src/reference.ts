@@ -20,6 +20,25 @@ const instructionRows: [mn: string, code: string, meaning: string, rtn: string, 
 
 const STANDARD_TABS: Tab[] = [
   {
+    id: 'about',
+    title: 'About the LMC',
+    html: `
+      <p>The <b>Little Man Computer (LMC)</b> is a very simple model of a computer, designed by Stuart Madnick at MIT in 1965 to show how a processor runs a program. Picture a little man working in a room:</p>
+      <ul class="ref-notes">
+        <li>The room has <b>100 mailboxes</b>, numbered 00 to 99. Each one holds a 3-digit number, which is either an <b>instruction</b> or some <b>data</b>.</li>
+        <li>He has an <b>inbox</b> and an <b>outbox</b> for numbers coming in and going out, and a <b>calculator</b> (the <i>accumulator</i>) that holds one number at a time.</li>
+        <li>He follows the program one instruction at a time: <b>fetch</b> the instruction from its mailbox, <b>decode</b> what it means, then <b>execute</b> it. This is the <i>fetch–decode–execute cycle</i>, and it is exactly what a real processor does.</li>
+      </ul>
+      <p>The instructions are written in <b>assembly language</b>, using short names such as <code>LDA</code> (load) and <code>ADD</code>. The <b>Instructions</b> tab lists all of them. OCR’s A Level Computer Science specification (H446) uses the LMC to teach assembly language.</p>
+      <h3>Using this simulator</h3>
+      <ol class="ref-notes">
+        <li>Type a program in the <b>Program</b> box, or choose one from <b>Example</b>.</li>
+        <li>Press <b>Step ▸</b> to watch one register transfer at a time, <b>Instruction</b> to run one whole instruction, or <b>Run</b> to run the program. <b>Back</b> undoes a step and <b>Reset</b> starts again.</li>
+        <li>Watch the <b>registers</b>, the <b>fetch–decode–execute</b> panel and the <b>memory</b> change. The trace table at the bottom records each instruction.</li>
+        <li>Hover over the numbers beside your program, or over a mailbox, to see what a machine-code word means. Double-click a mailbox to change its value.</li>
+      </ol>`,
+  },
+  {
     id: 'instructions',
     title: 'Instructions',
     html: `
@@ -215,7 +234,7 @@ export async function initReference(host: HTMLElement, toggle: HTMLElement, dial
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isOpen() && !document.body.classList.contains('ref-docked')) closeReference();
   });
-  selectTab('instructions');
+  selectTab('about');
 }
 
 function applyDock(docked: boolean) {

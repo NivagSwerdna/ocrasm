@@ -48,6 +48,8 @@ export interface MicroStep {
   fire?: boolean;
   /** Present when the step reads or writes memory. */
   bus?: BusActivity;
+  /** SLEEP: the number of milliseconds the program asked to wait. The machine does not wait; the caller decides. */
+  sleep?: number;
   /** True on the last step of an instruction (also on HLT and on errors). */
   instructionEnd: boolean;
 }
@@ -88,6 +90,7 @@ export interface MachineSnapshot {
   status: MachineStatus;
   error?: string;
   onFire: boolean;
+  sleptMs: number;
   instructionCount: number;
   microCount: number;
 }
@@ -105,6 +108,7 @@ interface OpResult {
   halt?: boolean;
   fire?: boolean;
   bus?: BusActivity;
+  sleep?: number;
 }
 
 interface Op {
@@ -154,6 +158,8 @@ export class Machine {
   error?: string;
   /** Set by the undocumented HCF instruction (opcode 999): halt and catch fire. */
   onFire = false;
+  /** Total milliseconds all the SLEEP instructions have asked for so far (a virtual clock; nothing here waits). */
+  sleptMs = 0;
   instructionCount = 0;
   microCount = 0;
 
@@ -210,6 +216,7 @@ export class Machine {
     this.status = 'ready';
     this.error = undefined;
     this.onFire = false;
+    this.sleptMs = 0;
     this.instructionCount = 0;
     this.microCount = 0;
   }
@@ -241,6 +248,7 @@ export class Machine {
       status: this.status,
       error: this.error,
       onFire: this.onFire,
+      sleptMs: this.sleptMs,
       instructionCount: this.instructionCount,
       microCount: this.microCount,
     };
@@ -256,6 +264,7 @@ export class Machine {
     this.status = s.status;
     this.error = s.error;
     this.onFire = s.onFire;
+    this.sleptMs = s.sleptMs;
     this.instructionCount = s.instructionCount;
     this.microCount = s.microCount;
   }
@@ -313,6 +322,7 @@ export class Machine {
       error: result.error,
       fire: result.fire,
       bus: result.bus,
+      sleep: result.sleep,
       instructionEnd,
     };
   }
@@ -488,6 +498,15 @@ export class Machine {
   private executeOpsExtended(cir: number, d: DecodedExtended): Op[] {
     const step = (rtn: string, run: () => OpResult): Op => ({ phase: 'execute', rtn, run });
     const mode = d.mode;
+
+    // SLEEP: the operand word (already in the OPR) is the number of milliseconds to wait.
+    if (d.mnemonic === 'SLEEP') {
+      return [step('wait OPR ms', () => {
+        const ms = this.regs.OPR;
+        this.sleptMs += ms;
+        return { detail: `wait ${ms} ms`, sleep: ms };
+      })];
+    }
 
     // No-operand instructions: the standard ones behave the same, plus INX and TXA.
     switch (d.mnemonic) {

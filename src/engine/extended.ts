@@ -55,6 +55,13 @@ export const EXT_ALLOWED: Readonly<Record<string, readonly AddressingMode[]>> = 
   BRP: ['direct'],
 };
 
+/**
+ * `SLEEP n`: wait n milliseconds (n is a whole number 0-999 written after it). Opcode word 905, then a word holding n.
+ * The machine has no clock of its own: executing it only reports the wait, and whatever is running the machine
+ * (the page's run loop) does the waiting.
+ */
+export const SLEEP_WORD = 905;
+
 const NAME_BY_DIGIT: Readonly<Record<number, string>> = { 1: 'ADD', 2: 'SUB', 3: 'STA', 4: 'LDX', 5: 'LDA', 6: 'BRA', 7: 'BRZ', 8: 'BRP' };
 
 export interface DecodedExtended {
@@ -71,6 +78,8 @@ export function decodeExtended(word: number): DecodedExtended | undefined {
   for (const [name, code] of Object.entries(EXT_FIXED)) {
     if (word === code) return { mnemonic: name as Mnemonic, length: 1 };
   }
+  // The operand is a plain number, so it counts as immediate.
+  if (word === SLEEP_WORD) return { mnemonic: 'SLEEP', mode: 'immediate', length: 2 };
   const opcode = Math.floor(word / 100);
   const modeDigit = Math.floor(word / 10) % 10;
   const name = NAME_BY_DIGIT[opcode];
@@ -107,6 +116,7 @@ export function disassembleExtended(
   if (!d) return undefined;
   if (d.length === 1) return d.mnemonic;
   if (operandWord === undefined) return `${d.mnemonic} …`;
+  if (d.mnemonic === 'SLEEP') return `SLEEP ${operandWord}`; // no # for a sleep: it is always a number of milliseconds
   const shown = d.mode === 'immediate' ? operandWord : (labelAt?.(operandWord) ?? operandWord);
   return `${d.mnemonic} ${formatExtendedOperand(d.mode!, shown)}`;
 }

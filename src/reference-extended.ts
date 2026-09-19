@@ -22,6 +22,7 @@ const instructionRows: [mn: string, modes: string, word: string, meaning: string
   ['OUT', '', '902', 'Output the accumulator', 'output ← ACC'],
   ['INX', '', '903', 'Add 1 to the index register X', 'X ← X + 1'],
   ['TXA', '', '904', 'Copy the index register X into the accumulator', 'ACC ← X'],
+  ['SLEEP', '', '905 + n', 'Wait n milliseconds. <code>n</code> is a whole number 0-999 written after it: <code>SLEEP 500</code>', 'wait OPR ms'],
   ['HLT', '', '000', 'End the program (<code>COB</code> and <code>END</code> also work)', 'stop'],
   ['DAT', '', '—', 'Not an instruction: reserve a mailbox, name it, optionally give it a starting value', 'assembler only'],
 ];
@@ -53,7 +54,8 @@ export const EXTENDED_TABS: Record<string, Tab> = {
       <ul class="ref-notes">
         <li>“value” is the operand word itself in immediate mode, and the contents of a mailbox in the other modes.</li>
         <li><code>STA</code> cannot use immediate mode (you cannot store into a constant). Branches always take a plain label or mailbox number.</li>
-        <li><code>INP</code>, <code>OUT</code>, <code>INX</code>, <code>TXA</code> and <code>HLT</code> are one word with no operand.</li>
+        <li><code>INP</code>, <code>OUT</code>, <code>INX</code>, <code>TXA</code> and <code>HLT</code> are one word with no operand. <code>SLEEP</code> is two words: <code>905</code> and then the number of milliseconds.</li>
+        <li><b>SLEEP</b> only asks for a wait; the machine has no clock. The simulator does the waiting while a program runs at Slow, Medium, Fast or <b>Real time</b> speed (Real time makes the wait almost exact). At <b>Instant</b> speed, and when you step by hand, nothing waits. The status line shows the total time slept. The longest single wait is 999 ms; use several <code>SLEEP</code>s in a row for longer.</li>
         <li>Plain LMC programs still assemble here, but a two-word instruction uses two mailboxes, so the machine code and the addresses of labels are different.</li>
       </ul>`,
   },
@@ -183,6 +185,7 @@ export const PERIPHERALS_TAB: Tab = {
       <li>While the peripherals are on, these six mailboxes are <b>reserved</b>: the assembler will not put a program's code or data there, so a program can use mailboxes 00-93.</li>
       <li>The names <code>switch1</code> to <code>lamp3</code> exist only while the peripherals are on, and cannot be used as labels.</li>
       <li>The memory grid draws the six mailboxes differently to show they are mapped to devices. They are still ordinary memory: a running program can read and write all of them, and what it writes stands.</li>
+      <li><code>SLEEP</code> is handy with lamps: <code>STA lamp1</code>, <code>SLEEP 500</code>, then switch it off again, makes a blink. Choose the <b>Real time</b> speed to see the timing as written.</li>
       <li>A program that <b>polls</b> a switch loops until the mailbox changes: <code>wait LDA switch1</code>, <code>BRZ wait</code>. Run it at Medium or Fast speed, not Instant, so you can click while it runs.</li>
     </ul>
     <pre class="ref-code">loop    LDA switch1     // read switch 1: 0 or 1

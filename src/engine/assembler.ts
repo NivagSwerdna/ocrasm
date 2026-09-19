@@ -5,6 +5,7 @@ import {
   FIRST_PERIPHERAL,
   MODE_DIGIT,
   PERIPHERAL_SYMBOLS,
+  SLEEP_WORD,
   type AddressingMode,
   decodeExtended,
 } from './extended';
@@ -67,7 +68,7 @@ function vocab(address: Readonly<Record<string, number>>, fixed: Readonly<Record
 
 const VOCABS: Record<Dialect, Vocab> = {
   standard: vocab(ADDRESS_OPCODES, FIXED_WORDS),
-  extended: vocab(EXT_BASE, EXT_FIXED),
+  extended: vocab({ ...EXT_BASE, SLEEP: SLEEP_WORD }, EXT_FIXED),
 };
 
 const LABEL_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -188,7 +189,10 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
     const wantsAddress = mnemonic in v.address;
 
     if (wantsAddress && args.length === 0) {
-      errors.push({ line, message: `${mnemonic} needs an operand (a label or mailbox address)` });
+      errors.push({
+        line,
+        message: mnemonic === 'SLEEP' ? 'SLEEP needs a number of milliseconds, for example SLEEP 500' : `${mnemonic} needs an operand (a label or mailbox address)`,
+      });
       return;
     }
     if (!wantsAddress && mnemonic !== 'DAT' && args.length > 0) {
@@ -282,6 +286,19 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
           }
         }
       }
+    } else if (mnemonic === 'SLEEP') {
+      // A whole number 0-999, with or without a #.
+      const m = /^#?(\d+)$/.exec(operand!);
+      let ms: number | undefined;
+      if (!m) {
+        errors.push({ line, message: `SLEEP takes a whole number of milliseconds from 0 to 999, for example SLEEP 500 (got '${operand}')` });
+      } else if (parseInt(m[1], 10) > WORD_MAX) {
+        errors.push({ line, message: `SLEEP ${parseInt(m[1], 10)} is too long: the most is ${WORD_MAX} milliseconds. Use several SLEEPs in a row for longer.` });
+      } else {
+        ms = parseInt(m[1], 10);
+      }
+      words = [SLEEP_WORD, ms ?? 0];
+      mode = 'immediate';
     } else if (extended && mnemonic in v.address) {
       // Work out the addressing mode from the operand's shape.
       let ref = operand!;

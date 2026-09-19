@@ -213,6 +213,21 @@ function explainExtended(word: number, text: string, options: ExplainOptions): W
     };
   }
 
+  // SLEEP is two words in group 9: 905, then the number of milliseconds.
+  if (d.mnemonic === 'SLEEP') {
+    const ms = options.operandWord;
+    return {
+      kind: 'instruction',
+      word: text,
+      title: ms === undefined ? 'SLEEP' : `SLEEP ${ms}`,
+      digits: [{ digit: '9', role: 'opcode' }, { digit: '0', role: 'spare' }, { digit: '5', role: 'operand' }],
+      opcode: '9: the input/output and index group',
+      operand: `5 chooses the operation here (SLEEP). The next mailbox holds ${ms === undefined ? 'the number of milliseconds' : ms}, the time to wait in milliseconds (0 to 999). It is fetched into the OPR.`,
+      effect: ms === undefined ? undefined : `wait ${ms} ms`,
+      note: 'SLEEP is an extra in the extended LMC, which is not part of the OCR specification. The machine only reports the wait; the simulator does the waiting, and only when a program is running at a timed speed.',
+    };
+  }
+
   // Two words: opcode word O M 0, then an operand word in the next mailbox.
   const mode = d.mode!;
   const operandWord = options.operandWord;
@@ -251,6 +266,15 @@ function explainExtended(word: number, text: string, options: ExplainOptions): W
 
 function explainOperandWord(word: number, text: string, options: ExplainOptions): WordExplanation {
   const { addr, mnemonic, mode } = options.operandOf!;
+  if (mnemonic === 'SLEEP') {
+    return {
+      kind: 'operand',
+      word: text,
+      title: 'Operand of SLEEP',
+      operand: `${word}: the number of milliseconds to wait`,
+      note: 'This word belongs to the SLEEP instruction before it. The CPU fetches it into the OPR; it is not executed as an instruction.',
+    };
+  }
   const isValue = mode === 'immediate';
   const label = !isValue ? options.labelAt?.(word) : undefined;
   return {

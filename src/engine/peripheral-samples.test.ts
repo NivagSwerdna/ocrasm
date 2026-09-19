@@ -49,11 +49,27 @@ function runs(states: number[][]) {
 
 describe('peripheral samples', () => {
   it('they all assemble with the peripherals on, and need the peripherals', () => {
-    for (const name of ['lamps-x.lmc', 'switch-value-x.lmc', 'binary-counter-x.lmc', 'traffic-lights-x.lmc']) {
+    for (const name of ['lamps-x.lmc', 'blink-x.lmc', 'switch-value-x.lmc', 'binary-counter-x.lmc', 'traffic-lights-x.lmc']) {
       expect(() => load(name), name).not.toThrow();
       const off = assemble(source(name), { dialect: 'extended' });
       expect(off.ok, name + ' without peripherals').toBe(false);
     }
+  });
+
+  it('blink-x: lamp1 is on for 500 ms, then off for 500 ms, over and over', () => {
+    const { machine: m } = load('blink-x.lmc');
+    const lamp1 = PERIPHERALS.lamps[0];
+    // At each SLEEP, note the lamp and how long it asked to wait.
+    const waits: [number, number][] = [];
+    for (let i = 0; i < 60 && m.status === 'ready'; i++) {
+      for (const step of m.stepInstruction()) {
+        if (step.sleep !== undefined) waits.push([m.memory[lamp1], step.sleep]);
+      }
+    }
+    expect(waits.length).toBeGreaterThanOrEqual(6);
+    expect(waits.slice(0, 6)).toEqual([[1, 500], [0, 500], [1, 500], [0, 500], [1, 500], [0, 500]]);
+    expect(m.sleptMs).toBe(waits.length * 500);
+    expect(m.memory[PERIPHERALS.lamps[1]]).toBe(0); // the other lamps are left alone
   });
 
   it('lamps-x: each lamp copies its switch, and keeps following as the switches move', () => {
