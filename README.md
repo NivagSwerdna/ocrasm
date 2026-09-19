@@ -6,7 +6,7 @@
 
 No install, no sign-up, no adverts. It runs entirely in your browser.
 
-![The simulator part-way through a program: the program with its machine code, the registers, the fetch–decode–execute steps with the buses, and the memory](docs/images/lmc-simulator.jpg)
+![The simulator part-way through a program: the program with its machine code, the CPU diagram with the ALU lit while it subtracts, the fetch–decode–execute steps with the buses, and the memory](docs/images/lmc-simulator.jpg)
 
 Write a Little Man Computer program, then run it or **step through it one register transfer at a time** and watch exactly what happens to the PC, MAR, MDR, CIR and accumulator, which mailbox is being read or written, and what is travelling on the address, data and control buses.
 
@@ -55,7 +55,7 @@ It is designed for **OCR A Level Computer Science (H446)**:
 ### Quick start
 
 1. **[Open the simulator](https://nivagswerdna.github.io/ocrasm/)** and choose **Add two numbers** from the **Example** list. The program appears in the **Program** box, and the numbers to feed it appear in the **Inbox**.
-2. Press **Step ▸** again and again. Each press performs **one register transfer** of the fetch–decode–execute cycle (`MAR ← PC`, `PC ← PC + 1`, `MDR ← [MAR]`…). Watch the registers, the memory and the **Fetch–decode–execute** panel change.
+2. Press **Step ▸** again and again. Each press performs **one register transfer** of the fetch–decode–execute cycle (`MAR ← PC`, `MDR ← [MAR]`, `CIR ← MDR`, `PC ← PC + 1`…). Watch the registers, the memory and the **Fetch–decode–execute** panel change.
 3. Press **Instruction ⏭** to run one whole instruction, or **Run ▶** to run the whole program. **◂ Back** undoes a step and **Reset ↺** starts again.
 
 New to the LMC? Open **Reference** (top right) and read **About the LMC**.
@@ -65,7 +65,7 @@ New to the LMC? Open **Reference** (top right) and read **About the LMC**.
 | Part | What it shows |
 |---|---|
 | **Program** | Your assembly code, with the address and machine code of each line in the margin. **Hover** over the margin numbers to see what a machine-code word means (opcode, operand, effect). Click a **line number** (or press `F9`) to set a **breakpoint**. The line about to run is highlighted. |
-| **Registers** | PC, ACC, MAR, MDR and CIR. A register that has just changed is highlighted. |
+| **CPU and registers** | A small diagram of the CPU: the **control unit**, the **ALU**, the registers (PC, ACC, MAR, MDR, CIR) and, below them, the **address, data and control buses** and memory. Each step colours the parts it uses: a register that was just written is yellow, one being read has a dashed blue outline, and the buses and memory light up on a read or write. There is no animation, only colour. **Hide diagram** leaves just the registers. |
 | **Fetch–decode–execute** | The steps of the current instruction in register-transfer notation, with the real values, and what travels on the **address, data and control buses** whenever memory is read or written. **What does … do?** opens the reference for that instruction. |
 | **Memory** | All 100 mailboxes, each showing its address, label, value and the instruction it decodes to. The next instruction, and mailboxes just read or written, are highlighted. **Double-click** a mailbox to change its value. |
 | **Inbox / Outbox** | Type the numbers your program will read. If it needs a number and the inbox is empty, it asks you. |
@@ -88,7 +88,7 @@ label     MNEMONIC   operand      // a comment
 first   DAT             // a mailbox to hold the first number (after HLT!)
 ```
 
-- One instruction per line. A **label** (a name for a mailbox) is optional and comes first.
+- One instruction per line. A **label** (a name for a mailbox) is optional and comes first. A label on the left of an instruction or `DAT` names that mailbox; a label on the right of a mnemonic stands for its address. Labels mean you never work out addresses by hand: insert an instruction and the assembler moves every label and every instruction that uses it for you.
 - The operand is a **label** or a **mailbox number**. The instruction always uses the **contents** of that mailbox: `LDA 10` loads what is *stored in* mailbox 10, not the number 10. To add a constant, store it with `DAT` first (`one DAT 1`, then `ADD one`).
 - **Put `DAT` lines after `HLT`.** Otherwise the CPU runs into them and tries to execute the data as instructions. (There is an example of exactly this mistake in the Example list.)
 - There is no compare instruction: use `SUB` then `BRZ` (equal) or `BRP` (greater than or equal).
@@ -114,6 +114,7 @@ first   DAT             // a mailbox to hold the first number (after HLT!)
 | Larger of two numbers | selection (`SUB` then `BRP`) |
 | Countdown | iteration (`BRZ` and `BRA`) |
 | Multiply | a counted loop, repeated addition |
+| Squares until zero | a counted loop inside a loop that ends on a sentinel value (0) |
 | Running total | a loop ended by a sentinel value (0) |
 | Largest / smallest of ten numbers | a loop with a running maximum or minimum |
 | Divide with remainder | repeated subtraction |
@@ -125,9 +126,9 @@ The programs are plain text files in [`programs/`](programs), so you can copy th
 
 ### Teacher setting: the order of the fetch stage
 
-Textbooks differ on where `PC ← PC + 1` sits in the fetch. By default it comes straight after `MAR ← PC`. Add **`?pc=after`** to the address to put it last, as in OCR's delivery guide for 1.1.1:
+Textbooks differ on where `PC ← PC + 1` sits in the fetch. By default the simulator follows OCR's delivery guide for 1.1.1, where it comes last, after `CIR ← MDR`. Some textbooks put it straight after `MAR ← PC`; add **`?pc=before`** to the address to get that order:
 
-`https://nivagswerdna.github.io/ocrasm/?pc=after`
+`https://nivagswerdna.github.io/ocrasm/?pc=before`
 
 Programs behave identically either way.
 

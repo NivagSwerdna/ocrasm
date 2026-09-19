@@ -130,16 +130,16 @@ describe('machine: micro-steps', () => {
     const steps = m.stepInstruction();
     expect(steps.map((s) => [s.phase, s.rtn])).toEqual([
       ['fetch', 'MAR ← PC'],
-      ['fetch', 'PC ← PC + 1'],
       ['fetch', 'MDR ← [MAR]'],
       ['fetch', 'CIR ← MDR'],
+      ['fetch', 'PC ← PC + 1'],
       ['decode', 'decode CIR'],
       ['execute', 'MAR ← 02'],
       ['execute', 'MDR ← [MAR]'],
       ['execute', 'ACC ← MDR'],
     ]);
     expect(steps.map((s) => s.instructionEnd)).toEqual([false, false, false, false, false, false, false, true]);
-    expect(steps[2]).toMatchObject({ read: 0, detail: 'MDR ← [00] = 502' });
+    expect(steps[1]).toMatchObject({ read: 0, detail: 'MDR ← [00] = 502' });
     expect(steps[6]).toMatchObject({ read: 2, detail: 'MDR ← [02] = 7' });
     expect(steps[7].changes).toEqual([{ reg: 'ACC', from: 0, to: 7 }]);
     expect([m.pc, m.acc, m.mar, m.mdr, m.cir]).toEqual([1, 7, 2, 7, 502]);
@@ -152,7 +152,7 @@ describe('machine: micro-steps', () => {
     m.stepInstruction();
     const steps = m.stepInstruction();
     expect(steps.map((s) => s.rtn)).toEqual([
-      'MAR ← PC', 'PC ← PC + 1', 'MDR ← [MAR]', 'CIR ← MDR', 'decode CIR', 'MAR ← 03', 'MDR ← ACC', '[MAR] ← MDR',
+      'MAR ← PC', 'MDR ← [MAR]', 'CIR ← MDR', 'PC ← PC + 1', 'decode CIR', 'MAR ← 03', 'MDR ← ACC', '[MAR] ← MDR',
     ]);
     expect(steps[7]).toMatchObject({ write: 3, detail: '[03] ← 42' });
     expect(m.memory[3]).toBe(42);
@@ -161,7 +161,7 @@ describe('machine: micro-steps', () => {
   it('branches overwrite the PC after it was incremented', () => {
     const m = machineFor('BRA 5\nHLT\nHLT\nHLT\nHLT\nHLT');
     const steps = m.stepInstruction();
-    expect(steps[1].changes).toEqual([{ reg: 'PC', from: 0, to: 1 }]);
+    expect(steps[3].changes).toEqual([{ reg: 'PC', from: 0, to: 1 }]);
     expect(steps[5].changes).toEqual([{ reg: 'PC', from: 1, to: 5 }]);
     expect(m.pc).toBe(5);
   });
@@ -439,12 +439,13 @@ describe('registers follow OCR\'s description of the cycle', () => {
     const m = machineFor('LDA x\nHLT\nx DAT 7');
     m.stepMicro(); // MAR <- PC
     expect([m.mar, m.pc, m.mdr, m.cir]).toEqual([0, 0, 0, 0]);
-    m.stepMicro(); // PC <- PC + 1
-    expect([m.mar, m.pc]).toEqual([0, 1]);
+    expect([m.mar, m.pc]).toEqual([0, 0]);
     m.stepMicro(); // MDR <- [MAR]
     expect([m.mdr, m.cir]).toEqual([502, 0]);
     m.stepMicro(); // CIR <- MDR
-    expect(m.cir).toBe(502);
+    expect([m.cir, m.pc]).toEqual([502, 0]);
+    m.stepMicro(); // PC <- PC + 1 (last, as in OCR's delivery guide)
+    expect(m.pc).toBe(1);
   });
 
   it('the address part of the CIR goes to the MAR, and data comes back through the MDR', () => {
@@ -569,14 +570,23 @@ describe('alias words used as labels', () => {
   });
 });
 
-describe('fetch order: PC increment early (default) or last (OCR delivery guide)', () => {
+describe('fetch order: PC increment last (default, OCR delivery guide) or early (some textbooks)', () => {
+  const early = (src: string, inputs: number[] = []) => {
+    const program = assembleOk(src);
+    return new Machine(program.memory, { dataAddresses: program.dataAddresses, pcIncrement: 'early' }, inputs);
+  };
   const late = (src: string, inputs: number[] = []) => {
     const program = assembleOk(src);
     return new Machine(program.memory, { dataAddresses: program.dataAddresses, pcIncrement: 'late' }, inputs);
   };
 
-  it('defaults to early', () => {
-    expect(machineFor('HLT').pcIncrement).toBe('early');
+  it('defaults to late, which is OCR\'s order', () => {
+    expect(machineFor('HLT').pcIncrement).toBe('late');
+  });
+
+  it('early order: MAR ← PC, PC ← PC + 1, MDR ← [MAR], CIR ← MDR', () => {
+    const m = early('LDA x\nHLT\nx DAT 7');
+    expect(m.stepInstruction().map((s) => s.rtn).slice(0, 5)).toEqual(['MAR ← PC', 'PC ← PC + 1', 'MDR ← [MAR]', 'CIR ← MDR', 'decode CIR']);
   });
 
   it('late order: MAR ← PC, MDR ← [MAR], CIR ← MDR, then PC ← PC + 1', () => {
@@ -592,7 +602,7 @@ describe('fetch order: PC increment early (default) or last (OCR delivery guide)
 
   it('runs every example program to the same output as the default order', () => {
     for (const t of tests) {
-      const m = late(programSource(t.program), t.inputs);
+      const m = early(programSource(t.program), t.inputs);
       expect(m.run().reason, t.program).toBe('halted');
       expect(m.output, t.program).toEqual(t.outputs);
     }
@@ -602,7 +612,7 @@ describe('fetch order: PC increment early (default) or last (OCR delivery guide)
     for (const t of tests) {
       const src = programSource(t.program);
       const a = machineFor(src, t.inputs);
-      const b = late(src, t.inputs);
+      const b = early(src, t.inputs);
       while (a.status === 'ready' && b.status === 'ready') {
         a.stepInstruction();
         b.stepInstruction();
@@ -627,7 +637,7 @@ describe('bus activity (spec 1.1.1(a): data, address and control buses)', () => 
   it('memory reads show the address, data and control buses', () => {
     const m = machineFor('LDA x\nHLT\nx DAT 7');
     const steps = m.stepInstruction();
-    const fetch = steps[2];
+    const fetch = steps[1];
     expect(fetch.rtn).toBe('MDR ← [MAR]');
     expect(fetch.bus).toEqual({ address: '00: MAR → memory', data: '502: memory → MDR', control: 'memory read' });
     const load = steps[6];

@@ -102,15 +102,19 @@ Example — `programs/countdown.lmc` (**verified**):
 
 Symbol table: `loop = 01`, `end = 05`, `one = 06`.
 
+### Why labels?
+
+A label to the **left** of an instruction or `DAT` names that mailbox; a label to the **right** of a mnemonic stands for that mailbox's address; with `DAT` a label is a **variable** (`one DAT 1`). Without labels the programmer counts every address by hand, and inserting one instruction moves every later mailbox, so every instruction that refers to one would need editing. The assembler recomputes them on each assembly. (In the two-pass example above, inserting an instruction before `end HLT` turns `BRZ end` from `705` into `706` and moves `one` to 07. The simulator's reference drawer says this too.)
+
 ## 5. Fetch–decode–execute in the LMC
 
 **Fetch** (identical for every instruction):
 
 ```
 MAR ← PC
-PC  ← PC + 1
 MDR ← [MAR]
 CIR ← MDR
+PC  ← PC + 1
 ```
 
 **Decode:** the control unit splits `CIR` into opcode (hundreds digit) and operand (last two digits).
@@ -136,7 +140,10 @@ A branch works by **overwriting the PC after it has already been incremented** �
 
 - **Registers OCR names:** PC, ACC, MAR, MDR, CIR. The delivery guide calls the MDR the *Memory Buffer Register (MBR)*, and the June 2022 mark scheme says "Allow Memory Buffer Register for MDR".
 - **PC copied to the MAR first:** the sample paper's Q5(e)(ii) ("which register would the contents of the PC be copied to?") is answered "MAR", and the June 2022 mark scheme says the PC's contents are "copied to the MAR at start of FDE" and "incremented (by one) on every cycle".
-- **Where the increment goes is *not* fixed by OCR's marking.** OCR's 2015 delivery guide (Learner Resource 2) lists the fetch as PC → MAR; `[MAR]` → MBR; MBR → CIR; **then** "the PC is incremented". The order used above (increment straight after `MAR ← PC`) is the common textbook one and the simulator's **default**. Both orders start with `MAR ← PC` and increment once per cycle. The URL parameter `?pc=after` (default `?pc=before`; `late`/`early` also work; there is no on-screen control) switches to OCR's delivery-guide order (`MAR ← PC`; `MDR ← [MAR]`; `CIR ← MDR`; `PC ← PC + 1`). Programs behave identically either way (tested).
+- **Where the increment goes is *not* fixed by OCR's marking, but the sources agree on "after the instruction is fetched".** OCR's 2015 delivery guide (Learner Resource 2) lists the fetch as PC → MAR; `[MAR]` → MBR; MBR → CIR; **then** "the PC is incremented". Wikipedia's account of the cycle has the same order (check the PC, fetch the instruction, increment the PC). **That is the simulator's default** (decision 2026-09-19; it used to be the other way round). Some textbooks increment straight after `MAR ← PC`; the URL parameter `?pc=before` (default `?pc=after`; `early`/`late` also work; there is no on-screen control) switches to that order. Both orders start with `MAR ← PC` and increment once per cycle. Programs behave identically either way (tested).
+- **ALU and control unit (1.1.1a):** the specification names both. The ALU does the arithmetic (`ADD`, `SUB`) and the result goes into the ACC; the control unit decodes the CIR and sends the control signals (for example the read/write signal on the control bus). The simulator says so in the `decode` and `ACC ← ACC ± MDR` step text, in "The machine" tab, and in its CPU diagram.
+- **Interrupts (delivery guide, last execute bullet):** "the processor checks for interrupts ... and either branches to the relevant interrupt service routine or starts the cycle again". The LMC has none, so the simulator has no such step; the reference notes it under "After execute". Interrupts return in 1.2.1.
+- **Architecture (1.1.1c–f) and the delivery guide's remark that the LMC models a simple von Neumann machine:** "The machine" tab now names von Neumann and Harvard and says what the LMC leaves out (clock speed, cores, cache, pipelining).
 - **Execute:** the delivery guide says "the address part of the instruction is placed in the MAR". That is the `MAR ← xx` step (the simulator words it "the address part of the CIR"). Branches take the address straight into the PC.
 - **ACC:** the June 2022 mark scheme gives its purposes as holding all input/output, holding results of calculations (from the ALU), being checked for conditional branching (e.g. BRZ), and storing data which has come from the MDR/RAM. That matches `INP`/`OUT` using the ACC only, and `LDA` going memory → MDR → ACC.
 - **Buses:** spec 1.1.1(a) adds the data, address and control buses ("how this relates to assembly language programs"), and the Clarification Guide says candidates must understand "how and where data and addresses are transmitted to/from in each part of this cycle". The simulator shows, on every step that reads or writes memory, what is on the address bus (the MAR's address), the data bus (the value, and its direction between memory and the MDR) and the control bus (memory read or write).
@@ -186,7 +193,7 @@ first   DAT
 
 ### 6.3 The example library
 
-All in `programs/`, with expected results in `programs/tests.json` (32 cases, all pass).
+All in `programs/`, with expected results in `programs/tests.json` (36 cases, all pass).
 
 | File | Demonstrates | Concept |
 |---|---|---|
@@ -194,6 +201,7 @@ All in `programs/`, with expected results in `programs/tests.json` (32 cases, al
 | `max.lmc` | SUB then BRP | selection (if/else) |
 | `countdown.lmc` | BRZ + BRA | iteration (while loop) |
 | `multiply.lmc` | repeated addition | counted loop, accumulator variable |
+| `square.lmc` | repeated addition inside a sentinel loop | reads numbers and outputs each square until 0; the total must be reset every time round |
 | `sum-until-zero.lmc` | sentinel input | indefinite iteration |
 | `max10.lmc` | loop, `SUB` then `BRP` | running maximum of ten inputs |
 | `min10.lmc` | loop, `SUB` then `BRP` | running minimum of ten inputs |
@@ -292,9 +300,9 @@ Indexed mode needs an index register (OCR's term is "the Index Register"; LMC-X 
 The PC now advances by the **instruction length**, so a two-word instruction needs an extra fetch. Registers as before, plus an internal operand register **OPR**:
 
 ```
-Fetch opcode:   MAR ← PC ; PC ← PC + 1 ; MDR ← [MAR] ; CIR ← MDR
+Fetch opcode:   MAR ← PC ; MDR ← [MAR] ; CIR ← MDR ; PC ← PC + 1
 Decode:         O = hundreds digit, M = tens digit; does this opcode need an operand?
-Fetch operand:  MAR ← PC ; PC ← PC + 1 ; MDR ← [MAR] ; OPR ← MDR      (two-word instructions only)
+Fetch operand:  MAR ← PC ; MDR ← [MAR] ; OPR ← MDR ; PC ← PC + 1      (two-word instructions only)
 Execute:        depends on the mode - see below
 ```
 
@@ -446,7 +454,7 @@ total   DAT 0
 > `total` is assembled into mailbox 00 and holds `000`. Execution starts at mailbox 00, so the CPU fetches `000` = `HLT` and stops immediately, before `INP`. Data (`DAT`) must be placed after `HLT`. *(Verified: halts after 1 fetch, no output.)*
 
 **Q5.** State the fetch stage of the cycle using register-transfer notation. *(4 marks)*
-> `MAR ← PC`, `PC ← PC + 1`, `MDR ← [MAR]`, `CIR ← MDR`.
+> `MAR ← PC`, `MDR ← [MAR]`, `CIR ← MDR`, `PC ← PC + 1`. (Some textbooks increment straight after `MAR ← PC`; the mark schemes checked do not fix the position, so either order should earn the marks.)
 
 **Q6.** Explain what is meant by the stored-program concept, and give one way the LMC illustrates it. *(3 marks)*
 > Instructions and data are held in the same memory as numbers, and fetched the same way. In the LMC, both instructions (`901`, `306`) and data (`DAT`) occupy mailboxes; a program can even overwrite its own instructions.
@@ -521,11 +529,12 @@ interface MicroStep { phase: 'fetch' | 'decode' | 'execute'; rtn: string; detail
 
 - **Core:** assembler with line-numbered errors; 100-mailbox grid showing both decimal and mnemonic disassembly; registers (PC, ACC, MAR, MDR, CIR); Step / Run / Reset; input queue and output log.
 - **Teaching:** step *within* the cycle (fetch → decode → execute → next), showing the RTN line being performed; highlight the mailbox being read/written; assembly ↔ machine-code side by side; symbol table view; trace-table export (matches §6 format).
+- **CPU diagram (built):** the Registers card is a small static diagram: control unit, ALU, registers, then the address, data and control buses as separate blocks, then memory. Each micro-step colours what it uses (written registers yellow, read registers dashed blue, buses and memory in the read/write colours). Colour only, no animation; a "Hide diagram" button leaves just the registers. Which parts a step uses is worked out from its register-transfer text in `src/diagram.ts` (tested).
 - **Extras:** breakpoints; speed control; "exam mode" (hide symbol names); running `programs/tests.json` as an autograder; addressing-mode demo (the extended LMC in §7.1, behind `?lmc=extended`); warn when self-modifying code executes.
 
 ### 11.4 Test corpus
 
-`programs/tests.json` gives `{ program, inputs, outputs }` for 32 cases across the 10 example programs. Load it in your test runner to check your assembler + CPU: any correct implementation must pass all of them.
+`programs/tests.json` gives `{ program, inputs, outputs }` for 36 cases across the 11 example programs. Load it in your test runner to check your assembler + CPU: any correct implementation must pass all of them.
 
 ---
 

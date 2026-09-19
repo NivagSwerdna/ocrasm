@@ -1441,3 +1441,160 @@ input[type='text'] {
   border-color: var(--lamp);
   box-shadow: 0 0 10px 2px var(--lamp);
 }
+
+/* ---------- CPU diagram ---------- */
+
+.cpu {
+  position: relative;
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.1rem 0.5rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.cpu-label {
+  position: absolute;
+  top: -0.7rem;
+  left: 0.8rem;
+  padding: 0 0.4rem;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.units {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.buses {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.mem-wrap {
+  margin-top: 0.5rem;
+}
+
+.unit,
+.bus-block,
+.mem-block {
+  padding: 0.25rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--code-bg);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.unit .bt,
+.bus-block .bt,
+.mem-block .bt {
+  font-size: 0.8rem;
+}
+
+.unit .bt,
+.bus-block .bt {
+  display: block;
+}
+
+.flow {
+  display: block;
+  color: var(--muted);
+}
+
+.bv {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.unit .bv {
+  display: none;
+}
+
+.bus-block .bv {
+  display: block;
+  min-height: 1.25em;
+}
+
+.mem-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.6rem;
+}
+
+.mem-block .flow {
+  display: inline;
+}
+
+.bus-block.addr { border-left: 5px solid var(--read-border); }
+.bus-block.data { border-left: 5px solid var(--crimson); }
+.bus-block.ctrl { border-left: 5px solid var(--ok); }
+
+.unit.active {
+  background: var(--changed);
+  border-color: var(--next-border);
+}
+
+.bus-block.addr.active,
+.mem-block.read {
+  background: var(--read);
+  border-color: var(--read-border);
+}
+
+.bus-block.data.active,
+.mem-block.write {
+  background: var(--write);
+  border-color: var(--write-border);
+}
+
+.bus-block.ctrl.active {
+  background: color-mix(in srgb, var(--ok) 22%, var(--card));
+  border-color: var(--ok);
+}
+
+/* a register that a step reads (one it writes is .changed) */
+.reg.source:not(.changed) {
+  border-color: var(--read-border);
+  border-style: dashed;
+}
+
+.diagram-key {
+  margin-top: 0.4rem;
+}
+
+/* hiding the diagram leaves the registers as a plain row */
+.diagram-off .cpu {
+  padding: 0;
+  border-color: transparent;
+}
+
+.diagram-off .cpu-label,
+.diagram-off .units,
+.diagram-off .buses,
+.diagram-off .mem-wrap,
+.diagram-off .diagram-key {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit,
+  .bus-block,
+  .mem-block {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .units {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

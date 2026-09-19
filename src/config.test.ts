@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { parseDialect, parsePcIncrement } from './config';
 
 describe('?pc= URL setting', () => {
-  it('defaults to increment-before', () => {
-    expect(parsePcIncrement('')).toBe('early');
-    expect(parsePcIncrement('?x=1')).toBe('early');
+  it('defaults to increment-last (OCR\'s order)', () => {
+    expect(parsePcIncrement('')).toBe('late');
+    expect(parsePcIncrement('?x=1')).toBe('late');
   });
 
   it('accepts before/after and the early/late synonyms', () => {
@@ -17,8 +17,9 @@ describe('?pc= URL setting', () => {
   it('ignores case and other parameters, and falls back for unknown values', () => {
     expect(parsePcIncrement('?a=b&pc=AFTER')).toBe('late');
     expect(parsePcIncrement('?pc=%20After%20')).toBe('late');
-    expect(parsePcIncrement('?pc=sideways')).toBe('early');
-    expect(parsePcIncrement('?pc=')).toBe('early');
+    expect(parsePcIncrement('?pc=sideways')).toBe('late');
+    expect(parsePcIncrement('?pc=')).toBe('late');
+    expect(parsePcIncrement('?pc=BEFORE')).toBe('early');
   });
 });
 

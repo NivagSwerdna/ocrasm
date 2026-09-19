@@ -21,6 +21,7 @@ const LIBRARY: { file: string; name: string; concept: string }[] = [
   { file: 'max.lmc', name: 'Larger of two numbers', concept: 'Selection (SUB then BRP)' },
   { file: 'countdown.lmc', name: 'Countdown', concept: 'Iteration (BRZ and BRA)' },
   { file: 'multiply.lmc', name: 'Multiply', concept: 'Counted loop, repeated addition' },
+  { file: 'square.lmc', name: 'Squares until zero', concept: 'A counted loop inside a sentinel loop' },
   { file: 'sum-until-zero.lmc', name: 'Running total', concept: 'Sentinel-controlled loop' },
   { file: 'max10.lmc', name: 'Largest of ten numbers', concept: 'Loop with a running maximum' },
   { file: 'min10.lmc', name: 'Smallest of ten numbers', concept: 'Loop with a running minimum' },

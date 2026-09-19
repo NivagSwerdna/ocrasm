@@ -81,9 +81,19 @@
       </div>
 
       <div class="col col-right">
-      <section class="card regs-card" aria-labelledby="h-regs">
-        <h2 id="h-regs">Registers</h2>
-        <div class="regs" id="regs"></div>
+      <section class="card regs-card" id="cpu-card" aria-labelledby="h-regs">
+        <div class="card-head">
+          <h2 id="h-regs">CPU and registers</h2>
+          <button type="button" class="link" id="btn-diagram" aria-controls="cpu-card" aria-pressed="true">Hide diagram</button>
+        </div>
+        <div class="cpu">
+          <span class="cpu-label" aria-hidden="true">CPU</span>
+          <div class="units" id="units"></div>
+          <div class="regs" id="regs"></div>
+        </div>
+        <div class="buses" id="buses"></div>
+        <div class="mem-wrap" id="mem-wrap"></div>
+        <p class="hint muted diagram-key">Yellow: a register or unit that has just been written or is doing the work. Blue dashed outline: a register being read. The buses use the colours of the steps in Fetch–decode–execute.</p>
       </section>
 
       <section class="card io-card" aria-label="Inbox and outbox">

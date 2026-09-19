@@ -6,8 +6,8 @@ export type Phase = 'fetch' | 'decode' | 'execute';
 export type MachineStatus = 'ready' | 'waiting-input' | 'halted' | 'error';
 
 /**
- * Where `PC ← PC + 1` sits in the fetch. `early` (default): straight after `MAR ← PC`, as in many textbooks.
- * `late`: last, after `CIR ← MDR`, as in OCR's 2015 delivery guide for 1.1.1.
+ * Where `PC ← PC + 1` sits in the fetch. `late` (default): last, after `CIR ← MDR`, as in OCR's 2015 delivery guide for 1.1.1
+ * and in Wikipedia's account of the cycle. `early`: straight after `MAR ← PC`, as some textbooks have it.
  */
 export type PcIncrement = 'early' | 'late';
 
@@ -61,7 +61,7 @@ export interface MachineOptions {
   allowNegativeInput?: boolean;
   /** Mailboxes that came from DAT lines; executing one produces a warning. */
   dataAddresses?: readonly number[];
-  /** Where the PC is incremented in the fetch. Default `early`. */
+  /** Where the PC is incremented in the fetch. Default `late` (OCR's order). */
   pcIncrement?: PcIncrement;
   /** `standard` (default) is the LMC as OCR specifies it; `extended` adds addressing modes (see extended.ts). */
   dialect?: Dialect;
@@ -167,7 +167,7 @@ export class Machine {
     if (memory.length !== MEMORY_SIZE) throw new RangeError(`Memory must have ${MEMORY_SIZE} words`);
     this.options = { overflow: options.overflow ?? 'warn', allowNegativeInput: options.allowNegativeInput ?? false };
     this.dataAddresses = new Set(options.dataAddresses ?? []);
-    this.pcIncrement = options.pcIncrement ?? 'early';
+    this.pcIncrement = options.pcIncrement ?? 'late';
     this.dialect = options.dialect ?? 'standard';
     this.initialMemory = [...memory];
     this.mem = [...memory];
@@ -448,7 +448,7 @@ export class Machine {
         } else {
           detail = cir === 0 ? `opcode ${opcode} → ${text}` : `opcode ${opcode}, operand ${pad2(cir % 100)} → ${text}`;
         }
-        return { detail, warning };
+        return { detail: `${detail} (decoded by the control unit)`, warning };
       },
     };
     return [...this.fetchOps('CIR'), decode];
@@ -479,7 +479,7 @@ export class Machine {
     const before = this.regs.ACC;
     const after = before + sign * operand;
     this.set('ACC', after);
-    const detail = `ACC ← ${before} ${sign === 1 ? '+' : '−'} ${operand} = ${after}`;
+    const detail = `ACC ← ${before} ${sign === 1 ? '+' : '−'} ${operand} = ${after} (calculated by the ALU)`;
     if (after < WORD_MIN || after > WORD_MAX) {
       const message = `The accumulator is ${after}, outside the range ${WORD_MIN} to ${WORD_MAX} that a mailbox can hold.`;
       return this.options.overflow === 'error' ? { detail, error: message } : { detail, warning: message };

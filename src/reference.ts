@@ -3,6 +3,7 @@
 
 import type { Dialect } from './engine';
 import type { Tab } from './reference-extended';
+import { ARCHITECTURE_HTML, CYCLE_END_HTML, LABELS_HTML, UNIT_ROWS } from './reference-shared';
 
 const instructionRows: [mn: string, code: string, meaning: string, rtn: string, note?: string][] = [
   ['ADD', '1xx', 'Add the contents of mailbox xx to the accumulator', 'ACC ← ACC + [xx]'],
@@ -18,7 +19,7 @@ const instructionRows: [mn: string, code: string, meaning: string, rtn: string, 
   ['DAT', '—', 'Not an instruction: reserve a mailbox, name it, optionally give it a starting value', 'assembler only'],
 ];
 
-const STANDARD_TABS: Tab[] = [
+export const STANDARD_TABS: Tab[] = [
   {
     id: 'about',
     title: 'About the LMC',
@@ -34,7 +35,7 @@ const STANDARD_TABS: Tab[] = [
       <ol class="ref-notes">
         <li>Type a program in the <b>Program</b> box, or choose one from <b>Example</b>.</li>
         <li>Press <b>Step ▸</b> to watch one register transfer at a time, <b>Instruction</b> to run one whole instruction, or <b>Run</b> to run the program. <b>Back</b> undoes a step and <b>Reset</b> starts again.</li>
-        <li>Watch the <b>registers</b>, the <b>fetch–decode–execute</b> panel and the <b>memory</b> change. The trace table at the bottom records each instruction.</li>
+        <li>Watch the <b>CPU diagram</b> (registers, control unit, ALU and buses), the <b>fetch–decode–execute</b> panel and the <b>memory</b> change. The parts a step uses are coloured. The trace table at the bottom records each instruction.</li>
         <li>Hover over the numbers beside your program, or over a mailbox, to see what a machine-code word means. Double-click a mailbox to change its value.</li>
       </ol>`,
   },
@@ -69,6 +70,7 @@ const STANDARD_TABS: Tab[] = [
         <tbody>
           <tr><th scope="row">Memory</th><td>100 <b>mailboxes</b>, addresses 00–99. Each holds one 3-digit number.</td></tr>
           <tr><th scope="row">Stored program</th><td>Instructions and data are the same kind of thing (a number) in the same memory.</td></tr>
+          ${UNIT_ROWS}
           <tr><th scope="row">PC</th><td><b>Program Counter</b>: holds the address of the next instruction to be fetched. Starts at 00. Its contents are copied to the MAR at the start of each cycle, it is incremented on every cycle, and a branch instruction can change it.</td></tr>
           <tr><th scope="row">MAR</th><td><b>Memory Address Register</b>: holds the address in memory that is about to be read from or written to.</td></tr>
           <tr><th scope="row">MDR</th><td><b>Memory Data Register</b>: holds the data that has just been read from memory, or is about to be written to it. Some sources call it the <i>Memory Buffer Register (MBR)</i>; OCR mark schemes accept either name.</td></tr>
@@ -85,7 +87,7 @@ const STANDARD_TABS: Tab[] = [
           <tr><th scope="row">Control bus</th><td>Carries control signals, such as whether memory is being read or written.</td></tr>
         </tbody>
       </table>
-      <p>The steps in the Fetch–decode–execute panel show what travels on each bus whenever memory is read or written. Copies between registers (such as <code>MAR ← PC</code>) happen inside the CPU and use none of them.</p>`,
+      <p>The CPU diagram lights up the three buses, and the steps in the Fetch–decode–execute panel say what travels on each, whenever memory is read or written. Copies between registers (such as <code>MAR ← PC</code>) happen inside the CPU and use none of them.</p>${ARCHITECTURE_HTML}`,
   },
   {
     id: 'syntax',
@@ -111,7 +113,9 @@ loop    BRZ end        //  01   705   (end = 05)
         SUB one        //  03   206   (one = 06)
         BRA loop       //  04   601   (loop = 01)
 end     HLT            //  05   000
-one     DAT 1          //  06   001</pre>`,
+one     DAT 1          //  06   001</pre>
+      ${LABELS_HTML}
+      <p>In the example above, <code>end</code> is mailbox 05. Insert one more instruction before it and <code>end</code> becomes 06: <code>BRZ end</code> now assembles to <code>706</code> instead of <code>705</code>, and <code>one</code> becomes 07. You do not change a line of your program.</p>`,
   },
   {
     id: 'cycle',
@@ -119,11 +123,11 @@ one     DAT 1          //  06   001</pre>`,
     html: `
       <h3>Fetch (every instruction)</h3>
       <pre class="ref-code">MAR ← PC
-PC  ← PC + 1
 MDR ← [MAR]
-CIR ← MDR</pre>
+CIR ← MDR
+PC  ← PC + 1</pre>
       <h3>Decode</h3>
-      <p>The control unit splits the CIR into the <b>opcode</b> (first digit) and the <b>operand</b> (last two digits, the address part of the instruction).</p>
+      <p>The <b>control unit</b> splits the CIR into the <b>opcode</b> (first digit) and the <b>operand</b> (last two digits, the address part of the instruction).</p>
       <h3>Execute</h3>
       <table class="ref-table">
         <tbody>
@@ -139,9 +143,9 @@ CIR ← MDR</pre>
           <tr><th scope="row"><code>HLT</code></th><td>stop</td></tr>
         </tbody>
       </table>
-      <p>Instructions that use memory put the <b>address part of the CIR into the MAR</b>. The data then moves between memory and the MDR, and between the MDR and the ACC. <code>INP</code> and <code>OUT</code> use only the ACC. A branch puts the address straight into the PC.</p>
-      <p>A branch works by <b>overwriting the PC after it has already been incremented</b>. That is why the PC is incremented before the execute stage.</p>
-      <p class="ref-caveat">Where the increment sits inside the fetch varies between sources. OCR’s 2015 delivery guide lists <code>PC ← PC + 1</code> last, after <code>CIR ← MDR</code>; this simulator defaults to doing it straight after <code>MAR ← PC</code>, as many textbooks do. Adding <code>?pc=after</code> to the page address switches to OCR’s order. Every version starts by copying the PC to the MAR and increments the PC once per cycle. The OCR mark schemes I checked do not say where in the cycle the increment must go.</p>`,
+      <p>Instructions that use memory put the <b>address part of the CIR into the MAR</b>. The data then moves between memory and the MDR, and between the MDR and the ACC. <code>INP</code> and <code>OUT</code> use only the ACC. A branch puts the address straight into the PC. In <code>ADD</code> and <code>SUB</code>, the <b>ALU</b> does the calculation and the result goes into the ACC.</p>
+      <p>A branch works by <b>overwriting the PC after it has already been incremented</b>. That is why the PC is incremented before the execute stage.</p>${CYCLE_END_HTML}
+      <p class="ref-caveat">This is the order in OCR’s 2015 delivery guide (Learner Resource 2): the PC is incremented after the instruction has been fetched. Some textbooks increment straight after <code>MAR ← PC</code>; adding <code>?pc=before</code> to the page address switches to that order. Every version starts by copying the PC to the MAR and increments the PC once per cycle. The OCR mark schemes I checked do not say where in the cycle the increment must go.</p>`,
   },
   {
     id: 'mistakes',

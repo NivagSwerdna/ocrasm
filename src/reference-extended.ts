@@ -1,6 +1,8 @@
 // Reference material for the EXTENDED LMC (?lmc=extended). Static, trusted HTML.
 // Everything here is invented for teaching and is NOT part of the OCR specification (see docs/OCR_LMC_Reference.md §7.1).
 
+import { ARCHITECTURE_HTML, CYCLE_END_HTML, LABELS_HTML, UNIT_ROWS } from './reference-shared';
+
 export interface Tab {
   id: string;
   title: string;
@@ -68,6 +70,7 @@ export const EXTENDED_TABS: Record<string, Tab> = {
       <table class="ref-table">
         <tbody>
           <tr><th scope="row">Memory</th><td>100 <b>mailboxes</b>, addresses 00–99. Each holds one 3-digit number. An instruction may use two.</td></tr>
+          ${UNIT_ROWS}
           <tr><th scope="row">PC</th><td><b>Program Counter</b>: holds the address of the next word to fetch. It moves on by the <b>length of the instruction</b>: 1 or 2.</td></tr>
           <tr><th scope="row">MAR</th><td><b>Memory Address Register</b>: holds the address in memory that is about to be read from or written to.</td></tr>
           <tr><th scope="row">MDR</th><td><b>Memory Data Register</b>: holds the data just read from memory, or about to be written to it (also called the Memory Buffer Register, MBR).</td></tr>
@@ -84,7 +87,7 @@ export const EXTENDED_TABS: Record<string, Tab> = {
           <tr><th scope="row">Data bus</th><td>Carries data between memory and the MDR, in both directions.</td></tr>
           <tr><th scope="row">Control bus</th><td>Carries control signals, such as whether memory is being read or written.</td></tr>
         </tbody>
-      </table>`,
+      </table>${ARCHITECTURE_HTML}`,
   },
 
   syntax: {
@@ -107,7 +110,8 @@ loop    LDA data,X     //  02-03   530 008   (data = 08)
         INX            //  04      903
         TXA            //  05      904
         BRA loop       //  06-07   600 002   (loop = 02)
-data    DAT 4          //  08      004</pre>`,
+data    DAT 4          //  08      004</pre>
+      ${LABELS_HTML}`,
   },
 
   cycle: {
@@ -117,16 +121,16 @@ data    DAT 4          //  08      004</pre>`,
       ${BANNER}
       <h3>Fetch the opcode word</h3>
       <pre class="ref-code">MAR ← PC
-PC  ← PC + 1
 MDR ← [MAR]
-CIR ← MDR</pre>
+CIR ← MDR
+PC  ← PC + 1</pre>
       <h3>Decode</h3>
-      <p>The control unit splits the CIR into the operation <b>O</b> and the mode <b>M</b>, and decides whether an operand word follows.</p>
+      <p>The <b>control unit</b> splits the CIR into the operation <b>O</b> and the mode <b>M</b>, and decides whether an operand word follows.</p>
       <h3>Fetch the operand word (two-word instructions)</h3>
       <pre class="ref-code">MAR ← PC
-PC  ← PC + 1
 MDR ← [MAR]
-OPR ← MDR</pre>
+OPR ← MDR
+PC  ← PC + 1</pre>
       <h3>Execute: <code>LDA</code> in each mode</h3>
       <table class="ref-table">
         <thead><tr><th>Mode</th><th>Register transfers</th><th>Memory reads for the data</th></tr></thead>
@@ -138,8 +142,9 @@ OPR ← MDR</pre>
         </tbody>
       </table>
       <p>Counting the two instruction fetches, <code>LDA</code> makes <b>3 / 2 / 4 / 3</b> memory accesses in direct / immediate / indirect / indexed mode. Indirect is the slowest and immediate the fastest.</p>
-      <p><code>STA</code> works the same way but ends with <code>MDR ← ACC</code>; <code>[MAR] ← MDR</code>. <code>ADD</code> and <code>SUB</code> end with <code>ACC ← ACC ± MDR</code> (or <code>± OPR</code> for immediate). A branch loads <code>PC ← OPR</code>. <code>INX</code> is <code>X ← X + 1</code> and <code>TXA</code> is <code>ACC ← X</code>.</p>
-      <p class="ref-caveat">Adding <code>?pc=after</code> to the page address moves <code>PC ← PC + 1</code> to the end of each fetch, as in OCR’s 2015 delivery guide.</p>`,
+      <p><code>STA</code> works the same way but ends with <code>MDR ← ACC</code>; <code>[MAR] ← MDR</code>. <code>ADD</code> and <code>SUB</code> end with the <b>ALU</b> calculating <code>ACC ← ACC ± MDR</code> (or <code>± OPR</code> for immediate). A branch loads <code>PC ← OPR</code>. <code>INX</code> is <code>X ← X + 1</code> and <code>TXA</code> is <code>ACC ← X</code>.</p>
+      ${CYCLE_END_HTML}
+      <p class="ref-caveat">This is the order in OCR’s 2015 delivery guide. Adding <code>?pc=before</code> to the page address moves <code>PC ← PC + 1</code> to straight after <code>MAR ← PC</code>, as some textbooks have it.</p>`,
   },
 
   mistakes: {

@@ -17,6 +17,7 @@ import {
   type Register,
 } from './engine';
 import { parseDialect, parsePcIncrement } from './config';
+import { activityOf, buildDiagram, type Diagram } from './diagram';
 import { BLANK_SOURCE, examplesFor, type Example } from './examples';
 import { explainWord, type WordExplanation } from './explain';
 import { pad2, word } from './format';
@@ -53,8 +54,9 @@ const KEY_SOURCE = EXTENDED ? 'ocrasm.source.extended' : 'ocrasm.source';
 const KEY_INBOX = EXTENDED ? 'ocrasm.inbox.extended' : 'ocrasm.inbox';
 const KEY_SCALE = 'ocrasm.scale';
 const KEY_SPEED = 'ocrasm.speed';
+const KEY_DIAGRAM = 'ocrasm.diagram';
 
-/** Where PC ← PC + 1 sits in the fetch. Set with ?pc=before (default) or ?pc=after; see config.ts. */
+/** Where PC ← PC + 1 sits in the fetch. Default is OCR's order (?pc=after); ?pc=before moves it up; see config.ts. */
 const PC_INCREMENT = parsePcIncrement(window.location.search);
 
 // ---------- dom ----------
@@ -138,6 +140,7 @@ let resumeOnInput = false;
 let skipBreakpoint = false;
 let statusNote = '';
 let prevStatus = '';
+let diagram: Diagram | undefined;
 /** While a SLEEP instruction is being waited out, how long it asked for. */
 let sleepingMs = 0;
 
@@ -549,6 +552,7 @@ function jumpToLine(line: number) {
 
 function buildStaticDom() {
   regsEl.classList.toggle('extended', EXTENDED);
+  diagram = buildDiagram($('units'), $('buses'), $('mem-wrap'));
   regsEl.replaceChildren(
     ...REGISTERS.map(({ reg, full }) => {
       const box = el('div', 'reg');
@@ -569,15 +573,26 @@ function buildStaticDom() {
   memoryEl.replaceChildren(...cells);
 }
 
+/** Show or hide the CPU diagram (the ALU, control unit, buses and memory blocks). The registers always stay. */
+function setDiagramShown(show: boolean) {
+  $('cpu-card').classList.toggle('diagram-off', !show);
+  const btn = $('btn-diagram');
+  btn.textContent = show ? 'Hide diagram' : 'Show diagram';
+  btn.setAttribute('aria-pressed', String(show));
+}
+
 function renderRegisters() {
   regsEl.classList.toggle('burnt', !!machine?.onFire);
   const changed = new Set<Register>();
   recent.forEach((s) => s.changes.forEach((c) => changed.add(c.reg)));
+  const activity = activityOf(recent);
+  diagram?.update(activity);
   regsEl.querySelectorAll<HTMLElement>('.reg').forEach((box) => {
     const reg = box.dataset.reg as Register;
     const value = machine ? { PC: machine.pc, ACC: machine.acc, MAR: machine.mar, MDR: machine.mdr, CIR: machine.cir, X: machine.x, OPR: machine.opr }[reg] : 0;
     box.querySelector('.val')!.textContent = reg === 'PC' || reg === 'MAR' ? pad2(value) : word(value);
     box.classList.toggle('changed', changed.has(reg));
+    box.classList.toggle('source', activity.sources.has(reg));
   });
 }
 
@@ -1206,6 +1221,12 @@ async function start() {
   }
 
   buildStaticDom();
+  setDiagramShown(storageGet(KEY_DIAGRAM) !== 'hidden');
+  $('btn-diagram').addEventListener('click', () => {
+    const show = $('cpu-card').classList.contains('diagram-off');
+    setDiagramShown(show);
+    storageSet(KEY_DIAGRAM, show ? 'shown' : 'hidden');
+  });
   await initReference($('reference'), $('btn-ref'), DIALECT);
   $('btn-ref').addEventListener('click', toggleReference);
 
